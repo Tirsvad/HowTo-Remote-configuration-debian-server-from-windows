@@ -52,7 +52,18 @@ To make SSH key generation and SSH connections non-interactive, you can set glob
 generate-ssh-key
 ```
 
-### SSH connection using the generated key
+### SSH passwordless connection
+First check if we have connection
+```bash
+ssh-connect-myserver-root
+```
+
+```bash
+cat ~/.ssh/id_rsa.pub | ssh-connect-myserver-root "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+Now you can connect server with key instead of password
+
 ```bash
 ssh-connect-myserver-root
 ```
