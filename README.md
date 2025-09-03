@@ -1,35 +1,48 @@
 ﻿# HowTo-Remote-configuration-debian-server-from-windows
-This guide provides step-by-step instructions for configuring and managing a remote Debian server from a Windows client using Windows Subsystem for Linux (WSL). It covers SSH setup and package installation.
+This beginner-friendly guide shows how to manage a remote Debian server from a Windows PC using Windows Subsystem for Linux (WSL). You’ll set up SSH keys, connect securely, and install software like Microsoft SQL Server (MSSQL).
 
 ## Prerequisites
-You need windows system with administrator rights.
+- A Windows system with administrator rights.
+- A Debian 12 server (remote) with at least 4 GB RAM.
 
-- A running linux server with debian 12 and at least 4 gb ram
+Placeholders used below—replace with your details:
+- 12.34.56.78 → your server IP or DNS name
+- user → your Linux username on the server (avoid using root when possible)
+- newusername → other user Linux username on the server
 
-This example using ip-adress 12.34.56.78 to connect server and a root user on server.
+**Note:**
+Get a powerfull server from contabo at low price.
+(https://contabo.com/en/)
 
-### Install WSL Debian using PowerShell
-To install Windows Subsystem for Linux (WSL) with Debian, open PowerShell as Administrator and run:
+### Install WSL (Debian) on Windows
+Open PowerShell as Administrator and install Debian in WSL.
+
+Run in: Windows PowerShell (Admin)
 
 ```powershell
 wsl --install -d Debian
 ```
 
-### Needed packages
-First we need to ensure we are running latest WSL. Therefor we update and upgrade WSL.
+### Update packages in WSL (Debian)
+Make sure your Debian (inside WSL) is up to date.
+
+Run in: WSL (Debian)
 
 ```bash
 sudo apt update
 sudo apt upgrade
 ```
 
-### Optionel: Setup envoriment variables in .bash_aliases (Debian WSL)
+### Optional: Set up convenient aliases in ~/.bash_aliases (WSL)
+These aliases make SSH and key generation simpler.
+
+Run in: WSL (Debian)
 ```bash
 nano ~/.bash_aliases
 ```
 
 ```bash
-# Adding globals to ~/.bash_aliases
+# Adding convenience aliases to ~/.bash_aliases
 
 # Set your email address for SSH key comment
 SSHKEYGEN_EMAIL_ADDRESS="user@example.com"
@@ -44,10 +57,18 @@ alias generate-ssh-key='ssh-keygen -t rsa -b 4096 -C "$SSHKEYGEN_EMAIL_ADDRESS" 
 # Replace '12.34.56.78' with your server's IP address
 alias ssh-connect-myserver='ssh -i "$SSH_KEY_FILE" user@12.34.56.78'
 alias ssh-connect-myserver-root='ssh -i "$SSH_KEY_FILE" root@12.34.56.78'
+alias myserver-tunnel='ssh -L 1433:localhost:1433 user@12.34.56.78'
 # Add more aliases as needed
 ```
 
-## SSH (secure connection with server)
+After saving, reload your shell to activate the aliases (or open a new WSL terminal):
+
+Run in: WSL (Debian)
+```bash
+source ~/.bashrc || source ~/.profile || true
+```
+
+## SSH (secure connection with your server)
 
 ### Non-interactive SSH key generation
 Below is a step-by-step explanation of how to set up SSH key-based authentication for passwordless server access:
@@ -77,55 +98,126 @@ Below is a step-by-step explanation of how to set up SSH key-based authenticatio
 	ssh-connect-myserver-root
 	```
 
-## Add Packaged as needed
+## Create a non-privileged user (on the server)
+1. **Connect Server**
+	Connect to the server (should no longer prompt for a password if keys are set up):
+	```bash
+	ssh-connect-myserver-root
+	```
+
+1. **Create user**
+	Add as many users as you need (replace newusername):
+    ```bash
+    adduser newusername    
+	```
+
+Run in: WSL (Debian) where newusername are login and had created a ssh key by `ssh-keygen` command  
+2. **Each user needs to copy public key to server**
+	```bash
+	cat ~/.ssh/id_rsa.pub | ssh newusername@12.34.56.78 "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+	```    
+
+3. **Optional: Give a user sudo privileges**
+	```bash
+    usermod -aG sudo newusername
+	```
+
+## Install software on the server
 
 ### MSSQL
 
 #### Setting Up Repository
-Below is a step-by-step explanation of how to set up the MSSQL Server repository on your Debian server. Each command is explained so you know exactly what is happening and why:
+Below is a step-by-step explanation of how to set up the MSSQL Server repository on your Debian server. Run these commands on the server (over SSH). Use sudo with a non-root user.
 
 1. **Install required dependencies**
 	These packages are needed to securely download and manage repositories and keys:
 	```bash
-	apt install gnupg2 apt-transport-https wget curl
+	sudo apt install -y gnupg2 apt-transport-https wget curl
 	```
 
 2. **Download and add the Microsoft GPG key**
 	This command downloads the official Microsoft signing key and converts it to a format usable by Debian/Ubuntu:
 	```bash
 	curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | \
-	gpg --dearmor | tee /usr/share/keyrings/microsoft.gpg > /dev/null 2>&1
+	gpg --dearmor | sudo tee /usr/share/keyrings/microsoft.gpg > /dev/null 2>&1
 	```
 
 3. **Add the MSSQL Server repository**
 	This command adds the Microsoft SQL Server repository for Ubuntu 22.04 to your Debian system. This is necessary because Microsoft does not provide a native Debian package:
 	```bash
 	echo "deb [arch=amd64,arm64,armhf signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/22.04/mssql-server-2022 jammy main" | \
-	tee /etc/apt/sources.list.d/mssql-server-2022.list > /dev/null
+	sudo tee /etc/apt/sources.list.d/mssql-server-2022.list > /dev/null
 	```
 
-#### Installation and setup MSSQL
+#### Installation and setup MSSQL (on the server)
 
 1. **Update package index**
 	This command refreshes the list of available packages and their versions, ensuring you get the latest version when installing:
 	```bash
-	apt update
+	sudo apt update
 	```
 
 2. **Install MSSQL Server**
 	This command installs the Microsoft SQL Server package using the repository you added earlier:
 	```bash
-	apt-get install -y mssql-server
+	sudo apt-get install -y mssql-server
 	```
 
 3. **Run initial MSSQL configuration**
 	This command starts the setup wizard for MSSQL Server, allowing you to choose edition, set the SA password, and configure other options:
 	```bash
-	/opt/mssql/bin/mssql-conf setup
+	sudo /opt/mssql/bin/mssql-conf setup
 	```
 
 4. **Check MSSQL Server status**
 	This command verifies that the MSSQL Server service is running correctly:
 	```bash
-	systemctl status mssql-server --no-pager
+	sudo systemctl status mssql-server --no-pager
 	```
+
+#### Allowing MSSQL Traffic via SSH Tunnel
+
+To securely access your MSSQL server from a Windows client, you can use SSH tunneling. This allows you to forward a local port on your Windows machine to the remote MSSQL port (default 1433) on your Debian server, without exposing the database port directly to the internet.
+
+##### 1. Open the MSSQL port in the firewall (Debian server)
+If you want to allow only local connections (recommended for SSH tunneling), allow traffic on port 1433 for localhost only (if UFW is installed):
+
+```bash
+sudo ufw allow from 127.0.0.1 to any port 1433
+```
+
+If UFW isn’t installed yet, you can enable it first (optional):
+
+```bash
+sudo apt install -y ufw
+sudo ufw enable
+```
+
+If you want to allow remote access (not recommended unless necessary), use:
+
+```bash
+sudo ufw allow 1433/tcp
+```
+
+##### 2. Set up SSH tunnel from Windows client
+On your Windows machine, use PowerShell or Command Prompt to create an SSH tunnel. This forwards your local port 1433 to the remote server's port 1433:
+
+```powershell
+ssh -L 1433:localhost:1433 user@your-server-ip
+```
+
+Replace `user` with your server username and `your-server-ip` with the server's IP address. Leave this terminal open while you need the tunnel.
+
+Alternative (from WSL): if you added the alias earlier, you can run:
+
+Run in: WSL (Debian)
+```bash
+myserver-tunnel
+```
+
+##### 3. Connect to MSSQL from Windows
+In your SQL client (e.g., SSMS, Azure Data Studio), connect to `localhost,1433` as the server name. The connection will be securely tunneled to your Debian server.
+
+**Note:**
+- Make sure the SSH port (default 22) is open on your server.
+- The MSSQL service must be running and listening on port 1433 (default).
