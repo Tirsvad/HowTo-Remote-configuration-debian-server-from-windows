@@ -168,6 +168,8 @@ Create a new table and chain, set default policy to drop, and allow only SSH:
 ```bash
 sudo nft add table inet filter
 sudo nft add chain inet filter input { type filter hook input priority 0 \; policy drop \; }
+sudo nft add rule inet filter input iifname "lo" accept
+sudo nft add rule inet filter input ct state established,related accept
 sudo nft add rule inet filter input tcp dport 22 accept
 ```
 
