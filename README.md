@@ -123,6 +123,15 @@ Below is a step-by-step explanation of how to set up SSH key-based authenticatio
 	ssh-connect-myserver-root
 	```
 
+1. **Get sudo packages**
+	`sudo` stands for "superuser do" and allows a regular (non-root) user to run commands with administrative (root) privileges. This is safer than logging in as root, because you only use elevated permissions when needed. For installation do:
+
+	```bash
+	'apt-get install -y sudo'
+	```
+
+After installing, you can add users to the `sudo` group so they can run admin commands safely.
+
 1. **Create user**
 	Add as many users as you need (replace newusername):
     ```bash
@@ -136,9 +145,42 @@ Run in: WSL (Debian) where newusername are login and had created a ssh key by `s
 	```    
 
 3. **Optional: Give a user sudo privileges**
+	At least one user should have sudo privileges so we can close access for root through ssh.
+
 	```bash
     usermod -aG sudo newusername
 	```
+
+## Configure firewall (nftables)
+Debian uses nftables as its firewall system. Here’s how to reset the firewall, allow only SSH (port 22), and make the rules persistent:
+
+### 1. Stop and flush any existing firewall rules
+This ensures you start with a clean slate (run as root or with sudo):
+
+```bash
+sudo systemctl stop nftables || true
+sudo nft flush ruleset
+```
+
+### 2. Allow only SSH (port 22)
+Create a new table and chain, set default policy to drop, and allow only SSH:
+
+```bash
+sudo nft add table inet filter
+sudo nft add chain inet filter input { type filter hook input priority 0 \; policy drop \; }
+sudo nft add rule inet filter input tcp dport 22 accept
+```
+
+### 3. Make nftables rules persistent
+Save the current ruleset so it loads on boot:
+
+```bash
+sudo nft list ruleset | sudo tee /etc/nftables.conf > /dev/null
+sudo systemctl enable nftables
+sudo systemctl start nftables
+```
+
+Now, only port 22 (SSH) is accessible from outside. All other incoming connections are blocked by default.
 
 ## Install software on the server
 
@@ -198,23 +240,11 @@ Below is a step-by-step explanation of how to set up the MSSQL Server repository
 To securely access your MSSQL server from a Windows client, you can use SSH tunneling. This allows you to forward a local port on your Windows machine to the remote MSSQL port (default 1433) on your Debian server, without exposing the database port directly to the internet.
 
 ##### 1. Open the MSSQL port in the firewall (Debian server)
-If you want to allow only local connections (recommended for SSH tunneling), allow traffic on port 1433 for localhost only (if UFW is installed):
+If you want to allow only local connections (recommended for SSH tunneling), allow traffic on port 1433 for localhost only:
 
 ```bash
-sudo ufw allow from 127.0.0.1 to any port 1433
-```
-
-If UFW isn’t installed yet, you can enable it first (optional):
-
-```bash
-sudo apt install -y ufw
-sudo ufw enable
-```
-
-If you want to allow remote access (not recommended unless necessary), use:
-
-```bash
-sudo ufw allow 1433/tcp
+sudo nft add rule inet filter input ip saddr 127.0.0.1 tcp dport 1433 accept
+sudo nft list ruleset | sudo tee /etc/nftables.conf > /dev/null
 ```
 
 ##### 2. Set up SSH tunnel from Windows client
