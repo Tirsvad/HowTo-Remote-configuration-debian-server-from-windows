@@ -1,6 +1,24 @@
 ﻿# HowTo-Remote-configuration-debian-server-from-windows
 This beginner-friendly guide shows how to manage a remote Debian server from a Windows PC using Windows Subsystem for Linux (WSL). You’ll set up SSH keys, connect securely, and install software like Microsoft SQL Server (MSSQL).
 
+## Table of Contents
+- [Prerequisites](#prerequisites)
+	- [Install WSL (Debian) on Windows](#install-wsl-debian-on-windows)
+	- [Update packages in WSL (Debian)](#update-packages-in-wsl-debian)
+	- [Optional: Set up convenient aliases in ~/.bash_aliases (WSL)](#optional-set-up-convenient-aliases-in-bash_aliases-wsl)
+- [SSH (secure connection with your server)](#ssh-secure-connection-with-your-server)
+	- [Non-interactive SSH key generation](#non-interactive-ssh-key-generation)
+	- [SSH passwordless connection](#ssh-passwordless-connection)
+- [Create a non-privileged user (on the server)](#create-a-non-privileged-user-on-the-server)
+- [Install software on the server](#install-software-on-the-server)
+	- [MSSQL](#mssql)
+		- [Setting Up Repository](#setting-up-repository)
+		- [Installation and setup MSSQL (on the server)](#installation-and-setup-mssql-on-the-server)
+		- [Allowing MSSQL Traffic via SSH Tunnel](#allowing-mssql-traffic-via-ssh-tunnel)
+			- [1. Open the MSSQL port in the firewall (Debian server)](#1-open-the-mssql-port-in-the-firewall-debian-server)
+			- [2. Set up SSH tunnel from Windows client](#2-set-up-ssh-tunnel-from-windows-client)
+			- [3. Connect to MSSQL from Windows](#3-connect-to-mssql-from-windows)
+
 ## Prerequisites
 - A Windows system with administrator rights.
 - A Debian 12 server (remote) with at least 4 GB RAM.
