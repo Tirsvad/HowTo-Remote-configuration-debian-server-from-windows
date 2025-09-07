@@ -51,6 +51,13 @@ sudo apt update
 sudo apt upgrade
 ```
 
+### Install openssh-client (if not already installed)
+we need the ssk-keygen and ssh commands.
+
+```bash
+sudo apt install -y openssh-client
+```
+
 ### Optional: Set up convenient aliases in ~/.bash_aliases (WSL)
 These aliases make SSH and key generation simpler.
 
